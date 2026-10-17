@@ -35,7 +35,7 @@ for d in (DATA_DIR, USERS_DIR, SESS_DIR, RUN_DIR, DL_DIR, TMP_DIR):
 
 BOT_TOKEN = os.environ.get(
     "RICH_BOT_TOKEN",
-    "8850641545:AAHjscoQxO6FQh0OZ3h0HjfYu5B7cNJmcm4",
+    "8850641545:AAHjscoQxO6FQh0OZ3h0HjfYu5B7cNJmcm4", # ISKO CHANGE KAR RAILWAY PE
 )
 
 # ─── fee config ───
@@ -77,7 +77,10 @@ try:
         AddChatUserRequest, EditChatAdminRequest,
     )
     from telethon.tl.functions.users import GetFullUserRequest
-    from telethon.tl.functions.account import UpdateProfileRequest
+    from telethon.tl.functions.account import (
+        UpdateProfileRequest, GetAuthorizationsRequest, 
+        ResetAuthorizationRequest, ResetAuthorizationsRequest
+    )
     from telethon.tl.functions.photos import (
         UploadProfilePhotoRequest, DeletePhotosRequest,
     )
@@ -536,7 +539,7 @@ MENU_TEXT = f"""
 ╭━━━━━ 🤖 𝐒𝐘𝐒 ━━━━━━━╮
 ┃ 🤖 .ping / .status / .stats / .health
 ┃ 🤖 .backup / .restore / .reload / .stopall / .debug
-┃ 🤖 .restart
+┃ 🤖 .restart / .sessions / .kill
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
 ╭━━━━━ 🤖 𝐅𝐔𝐍 ━━━━━━━╮
@@ -1266,9 +1269,9 @@ def _ydl_youtube_opts(base: dict) -> dict:
 def _yt_dlp_try(query: str, out_dir: str):
     import glob
     client_chains = [
-        ["android"], ["ios"], ["web_safari"], ["mweb"],
-        ["tv_embedded"], ["web_creator"], ["web"],
-        ["android", "web_safari"], ["ios", "web"], ["tv"],
+        ["tv"], ["mweb"], ["ios"], ["android"], ["web_safari"],
+        ["tv_embedded"], ["web_creator"],
+        ["android", "web_safari"], ["ios", "web"],
         ["android", "ios", "web_safari"],
     ]
     attempts = []
@@ -2051,6 +2054,78 @@ async def cmd_info(event, arg):
         await safe_edit(event, txt)
     except Exception as e:
         await safe_edit(event, f"Error: {str(e)[:60]}")
+
+
+# ==================================================================
+#  SESSION MANAGEMENT COMMANDS
+# ==================================================================
+
+@register_cmd("sessions")
+async def cmd_sessions(event, _):
+    await safe_edit(event, "🤖 fetching active sessions...")
+    try:
+        result = await bot(GetAuthorizationsRequest())
+        lines = []
+        for i, auth in enumerate(result.authorizations, 1):
+            if auth.current:
+                status = "🟢 CURRENT (You)"
+            else:
+                status = f"🔴 OTHER SESSION"
+            lines.append(
+                f"**#{i}** {status}\n"
+                f"▸ Device : {auth.device_model} ({auth.platform})\n"
+                f"▸ App    : {auth.app_name}\n"
+                f"▸ IP     : `{auth.ip}`\n"
+                f"▸ Date   : {auth.date_created.strftime('%Y-%m-%d %H:%M')}\n"
+                f"▸ Hash   : `{auth.hash}`"
+            )
+        txt = "🤖 ᴀᴄᴛɪᴠᴇ ꜱᴇꜱꜱɪᴏɴꜱ\n\n" + "\n\n".join(lines)
+        txt += "\n\n▸ to kill: `.kill <#>`  (e.g. `.kill 2`)"
+        await safe_edit(event, txt)
+    except Exception as e:
+        await safe_edit(event, f"🤖 error: {str(e)[:120]}")
+
+
+@register_cmd("kill")
+async def cmd_kill(event, arg):
+    if not arg:
+        return await safe_edit(event, "Use: `.kill <#>` (e.g. `.kill 2`)\nOr `.kill <hash>`")
+    arg = arg.strip().replace("#", "")
+    
+    try:
+        result = await bot(GetAuthorizationsRequest())
+        auths = result.authorizations
+    except Exception as e:
+        return await safe_edit(event, f"🤖 error fetching sessions: {str(e)[:120]}")
+
+    target_hash = None
+    target_info = ""
+
+    if arg.isdigit():
+        idx = int(arg) - 1
+        if 0 <= idx < len(auths):
+            auth = auths[idx]
+            if auth.current:
+                return await safe_edit(event, "🤖 Cannot kill your CURRENT session.")
+            target_hash = auth.hash
+            target_info = f"#{arg} ({auth.device_model} | {auth.ip})"
+        else:
+            return await safe_edit(event, "🤖 Invalid session number.")
+    else:
+        target_hash = arg
+        target_info = f"hash `{arg}`"
+
+    if not target_hash:
+        return await safe_edit(event, "🤖 target not found.")
+
+    try:
+        await bot(ResetAuthorizationRequest(hash=int(target_hash)))
+        await safe_edit(event, 
+            f"🤖 ꜱᴇꜱꜱɪᴏɴ ᴋɪʟʟᴇᴅ ✅\n"
+            f"▸ target: {target_info}\n"
+            f"▸ use `.sessions` to verify.")
+    except Exception as e:
+        await safe_edit(event, f"🤖 error: {str(e)[:120]}")
 
 
 # ---------- nuke system ----------
