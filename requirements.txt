@@ -4,3 +4,4 @@ yt-dlp
 gTTS
 requests
 edge-tts
+pytubefix>=8.0.0
