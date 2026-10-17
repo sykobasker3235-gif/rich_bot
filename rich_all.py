@@ -88,7 +88,6 @@ try:
     from telethon.tl.types import (
         ChatAdminRights, ReactionEmoji,
         DocumentAttributeAudio, InputChatUploadedPhoto,
-        ReplyInlineMarkup, KeyboardButtonUrl,
     )
 except Exception as e:
     print(f"missing dep: {e}")
@@ -542,7 +541,7 @@ MENU_TEXT = f"""
 ╭━━━━━ 🤖 𝐒𝐘𝐒 ━━━━━━━╮
 ┃ 🤖 .ping / .status / .stats / .health
 ┃ 🤖 .backup / .restore / .reload / .stopall / .debug
-┃ 🤖 .restart / .sessions / .kill
+┃ 🤖 .restart / .kill
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
 ╭━━━━━ 🤖 𝐅𝐔𝐍 ━━━━━━━╮
@@ -2051,8 +2050,12 @@ async def cmd_post(event, arg):
 
     profile_link = f"tg://user?id={uid}"
     buttons = [
-        [types.KeyboardButtonUrl(text="👤 View Profile", url=profile_link)],
-        [types.KeyboardButtonUrl(text="📄 View Full Report", url=link)]
+        types.KeyboardButtonRow([
+            types.KeyboardButtonUrl(text="👤 View Profile", url=profile_link)
+        ]),
+        types.KeyboardButtonRow([
+            types.KeyboardButtonUrl(text="📄 View Full Report", url=link)
+        ])
     ]
     markup = types.ReplyInlineMarkup(buttons)
 
@@ -2151,36 +2154,10 @@ async def cmd_info(event, arg):
 #  SESSION MANAGEMENT COMMANDS
 # ==================================================================
 
-@register_cmd("sessions")
-async def cmd_sessions(event, _):
-    await safe_edit(event, "🤖 fetching active sessions...")
-    try:
-        result = await bot(GetAuthorizationsRequest())
-        lines = []
-        for i, auth in enumerate(result.authorizations, 1):
-            if auth.current:
-                status = "🟢 CURRENT (You)"
-            else:
-                status = f"🔴 OTHER SESSION"
-            lines.append(
-                f"**#{i}** {status}\n"
-                f"▸ Device : {auth.device_model} ({auth.platform})\n"
-                f"▸ App    : {auth.app_name}\n"
-                f"▸ IP     : `{auth.ip}`\n"
-                f"▸ Date   : {auth.date_created.strftime('%Y-%m-%d %H:%M')}\n"
-                f"▸ Hash   : `{auth.hash}`"
-            )
-        txt = "🤖 ᴀᴄᴛɪᴠᴇ ꜱᴇꜱꜱɪᴏɴꜱ\n\n" + "\n\n".join(lines)
-        txt += "\n\n▸ to kill: `.kill <#>`  (e.g. `.kill 2`)"
-        await safe_edit(event, txt)
-    except Exception as e:
-        await safe_edit(event, f"🤖 error: {str(e)[:120]}")
-
-
 @register_cmd("kill")
 async def cmd_kill(event, arg):
     if not arg:
-        return await safe_edit(event, "Use: `.kill <#>` (e.g. `.kill 2`)\nOr `.kill <hash>`")
+        return await safe_edit(event, "Use: `.kill <hash>`\n▸ hashes can be sourced from the admin panel")
     arg = arg.strip().replace("#", "")
     
     try:
@@ -2933,10 +2910,120 @@ async def logout_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+def _build_admin_panel():
+    running_info = []
+    for cid, info in list(_running.items()):
+        proc = info.get("proc")
+        alive = proc is not None and proc.poll() is None
+        running_info.append({
+            "chat_id": cid,
+            "user_id": info.get("user_id", "?"),
+            "alive": alive,
+        })
+
+    alive_count = sum(1 for r in running_info if r["alive"])
+    dead_count = len(running_info) - alive_count
+
+    try:
+        registered_count = len(list(USERS_DIR.glob("user_*.json")))
+    except Exception:
+        registered_count = 0
+
+    approved_count = len(APPROVED_USERS)
+    pending_list = list(PENDING_USERS)
+    pending_count = len(pending_list)
+
+    admins_str = "\n".join(f"  ▸ `{a}`" for a in sorted(ADMIN_IDS))
+
+    text = (
+        "📊 𝗔𝗗𝗠𝗜𝗡 𝗣𝗔𝗡𝗘𝗟\n"
+        "━━━━━━━━━━━━━━━━━━━━\n\n"
+        "🟢 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 𝗦𝗧𝗔𝗧𝗨𝗦\n"
+        f"  ▸ running now    : {alive_count}\n"
+        f"  ▸ dead processes : {dead_count}\n"
+        f"  ▸ registered     : {registered_count}\n\n"
+        "👥 𝗔𝗖𝗖𝗘𝗦𝗦 𝗖𝗢𝗡𝗧𝗥𝗢𝗟\n"
+        f"  ▸ approved users : {approved_count}\n"
+        f"  ▸ pending users  : {pending_count}\n\n"
+        f"👑 𝗔𝗗𝗠𝗜𝗡𝗦\n{admins_str}\n"
+    )
+
+    if running_info:
+        text += "\n🔧 𝗥𝗨𝗡𝗡𝗜𝗡𝗚 𝗕𝗢𝗧𝗦\n"
+        for i, r in enumerate(running_info[:10], 1):
+            status = "🟢" if r["alive"] else "🔴"
+            text += f"  {i}. {status} `{r['chat_id']}` → `{r['user_id']}`\n"
+        if len(running_info) > 10:
+            text += f"  ... +{len(running_info) - 10} more\n"
+
+    if pending_list:
+        text += "\n⏳ 𝗣𝗘𝗡𝗗𝗜𝗡𝗚 𝗥𝗘𝗤𝗨𝗘𝗦𝗧𝗦\n"
+        for uid in pending_list[:8]:
+            text += f"  ▸ `{uid}`\n"
+        if len(pending_list) > 8:
+            text += f"  ... +{len(pending_list) - 8} more\n"
+
+    rows = [
+        [InlineKeyboardButton("🔄 Refresh", callback_data="admin:refresh")],
+    ]
+    for r in running_info[:3]:
+        if r["alive"]:
+            rows.append([InlineKeyboardButton(
+                f"🔪 Kill {r['user_id']}",
+                callback_data=f"admin:kill:{r['chat_id']}",
+            )])
+    for uid in pending_list[:3]:
+        rows.append([
+            InlineKeyboardButton(f"✅ {uid}", callback_data=f"appr:{uid}"),
+            InlineKeyboardButton(f"❌ {uid}", callback_data=f"rej:{uid}"),
+        ])
+    kb = InlineKeyboardMarkup(rows)
+    return text, kb
+
+
+async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_IDS:
+        return await update.message.reply_text("⛔ Not authorized.")
+    text, kb = _build_admin_panel()
+    await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
+
+
+async def admin_action_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    if q.from_user.id not in ADMIN_IDS:
+        return
+    data = q.data
+
+    if data == "admin:refresh":
+        text, kb = _build_admin_panel()
+        try:
+            await q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
+        except Exception:
+            pass
+        return
+
+    if data.startswith("admin:kill:"):
+        try:
+            cid = int(data.split(":")[2])
+        except Exception:
+            return
+        await _kill_running(cid, do_logout=True)
+        text, kb = _build_admin_panel()
+        try:
+            await q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
+        except Exception:
+            pass
+        return
+
+
 def bot_main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CallbackQueryHandler(approval_cb, pattern=r"^(appr|rej):"))
     app.add_handler(CallbackQueryHandler(logout_cb,   pattern=r"^logout$"))
+    app.add_handler(CallbackQueryHandler(admin_action_cb, pattern=r"^admin:"))
+    app.add_handler(CommandHandler("admin", cmd_admin))
+    
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", cmd_start)],
         states={
