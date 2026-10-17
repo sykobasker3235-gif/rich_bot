@@ -88,6 +88,7 @@ try:
     from telethon.tl.types import (
         ChatAdminRights, ReactionEmoji,
         DocumentAttributeAudio, InputChatUploadedPhoto,
+        ReplyInlineMarkup, KeyboardButtonUrl,
     )
 except Exception as e:
     print(f"missing dep: {e}")
@@ -531,6 +532,7 @@ MENU_TEXT = f"""
 ┃ 🤖 .music / .dl / .weather
 ┃ 🤖 .voice / .voicegirl / .voiceboy
 ┃ 🤖 .cookies / .setcookies / .musicdebug
+┃ 🤖 .post / .setpostpic
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
 ╭━━━━━ 🤖 𝐏𝐑𝐎𝐅𝐈𝐋𝐄 ━━━╮
@@ -1992,6 +1994,94 @@ async def cmd_clear(event, arg):
         f"▸ stats: {_nuke_stats['hits']} hits · {_nuke_stats['deleted']} deleted · "
         f"{_nuke_stats['calls']} calls")
 
+@register_cmd("setpostpic", needs_reply=True)
+async def cmd_setpostpic(event, arg):
+    reply = await event.get_reply_message()
+    if not reply or not reply.media:
+        return await safe_edit(event, "🤖 Reply to the scammer alert image with `.setpostpic`")
+    await safe_edit(event, "🤖 saving post image...")
+    try:
+        raw = await reply.download_media(file=bytes)
+        if not raw: return await safe_edit(event, "download failed")
+        target = DATA_DIR / "scammer_alert.jpg"
+        target.write_bytes(raw)
+        await safe_edit(event, "🤖 Scammer alert image saved successfully.")
+    except Exception as e:
+        await safe_edit(event, f"🤖 failed: {str(e)[:80]}")
+
+@register_cmd("post")
+async def cmd_post(event, arg):
+    arg = (arg or "").strip()
+    if not arg:
+        return await safe_edit(event, "Use: `.post @username <channel_link>`\nOr reply to a user: `.post <channel_link>`")
+
+    parts = arg.split()
+    target = None
+    link = None
+
+    if len(parts) == 1 and event.is_reply:
+        link = parts[0]
+        r = await event.get_reply_message()
+        target = await bot.get_entity(r.sender_id)
+    elif len(parts) >= 2:
+        target_str = parts[0]
+        link = parts[1]
+        if not link.startswith(("http://", "https://", "tg://")):
+            if link.startswith("@"):
+                link = "https://t.me/" + link[1:]
+            else:
+                link = "https://" + link
+        try:
+            if target_str.lstrip("-").isdigit():
+                target = await bot.get_entity(int(target_str))
+            else:
+                target = await bot.get_entity(target_str)
+        except Exception:
+            pass
+    else:
+        return await safe_edit(event, "Invalid format.")
+
+    if not target:
+        return await safe_edit(event, "Could not find user.")
+
+    username = f"@{target.username}" if getattr(target, "username", None) else "Unknown"
+    uid = target.id
+
+    text = f"❌ User {username} (`{uid}`) has been marked as a scammer."
+
+    profile_link = f"tg://user?id={uid}"
+    buttons = [
+        [types.KeyboardButtonUrl(text="👤 View Profile", url=profile_link)],
+        [types.KeyboardButtonUrl(text="📄 View Full Report", url=link)]
+    ]
+    markup = types.ReplyInlineMarkup(buttons)
+
+    img_path = DATA_DIR / "scammer_alert.jpg"
+    
+    try:
+        await event.delete()
+    except Exception:
+        pass
+
+    try:
+        if img_path.exists():
+            await bot.send_file(
+                event.chat_id,
+                str(img_path),
+                caption=text,
+                buttons=markup,
+                parse_mode="md"
+            )
+        else:
+            await bot.send_message(
+                event.chat_id,
+                text,
+                buttons=markup,
+                parse_mode="md"
+            )
+    except Exception as e:
+        await event.reply(f"🤖 Post failed: {e}")
+
 @register_cmd("heart")
 async def cmd_heart(event, arg):
     name = (arg or "").strip()
@@ -2760,6 +2850,7 @@ async def _finalize(update, context, chat_id: int):
         "Try `.menu` in any chat.\n\n"
         "`.fees <amount>` → fee calculator\n"
         "`.gc` → creates `Rich | MM | service` with PFP + pinned terms\n"
+        "`.post @user link` → scammer alert with buttons\n"
         "`.clear on` → nuke GC title/photo change msgs\n"
         "`.mutegc on` → mute entire GC\n"
         "`.music <song>` → video + voice note both\n"
