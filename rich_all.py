@@ -2,7 +2,7 @@
 # language: Python 3.10+
 # file: rich_all.py
 # target: Windows / Linux / Termux / VPS / Docker / Railway
-# deps: pip install "python-telegram-bot>=21" telethon yt-dlp gTTS requests edge-tts
+# deps: pip install "python-telegram-bot>=21" telethon yt-dlp gTTS requests edge-tts pytubefix
 #       ffmpeg required on PATH
 
 import asyncio
@@ -35,12 +35,11 @@ for d in (DATA_DIR, USERS_DIR, SESS_DIR, RUN_DIR, DL_DIR, TMP_DIR):
 
 BOT_TOKEN = os.environ.get(
     "RICH_BOT_TOKEN",
-    "8850641545:AAHjscoQxO6FQh0OZ3h0HjfYu5B7cNJmcm4", # ISKO CHANGE KAR RAILWAY PE
+    "8850641545:AAHjscoQxO6FQh0OZ3h0HjfYu5B7cNJmcm4",
 )
 
-# ─── fee config ───
-FEE_RATE      = float(os.environ.get("RICH_FEE_RATE", "1.0"))   # percent
-FEE_MIN       = float(os.environ.get("RICH_FEE_MIN",  "10"))    # rupees
+FEE_RATE      = float(os.environ.get("RICH_FEE_RATE", "1.0"))
+FEE_MIN       = float(os.environ.get("RICH_FEE_MIN",  "10"))
 
 logging.disable(logging.WARNING)
 for _n in ("telethon", "telethon.network", "telethon.network.mtprotosender",
@@ -68,6 +67,7 @@ try:
         PhoneCodeInvalidError, PhoneCodeExpiredError,
         PasswordHashInvalidError, ApiIdInvalidError,
     )
+    from telethon.tl.custom import Button
     from telethon.tl.functions.channels import (
         CreateChannelRequest, EditAdminRequest, EditTitleRequest,
         EditPhotoRequest, InviteToChannelRequest, LeaveChannelRequest,
@@ -78,7 +78,7 @@ try:
     )
     from telethon.tl.functions.users import GetFullUserRequest
     from telethon.tl.functions.account import (
-        UpdateProfileRequest, GetAuthorizationsRequest, 
+        UpdateProfileRequest, GetAuthorizationsRequest,
         ResetAuthorizationRequest
     )
     from telethon.tl.functions.auth import ResetAuthorizationsRequest
@@ -91,8 +91,15 @@ try:
     )
 except Exception as e:
     print(f"missing dep: {e}")
-    print('pip install "python-telegram-bot>=21" telethon yt-dlp gTTS requests edge-tts')
+    print('pip install "python-telegram-bot>=21" telethon yt-dlp gTTS requests edge-tts pytubefix')
     sys.exit(1)
+
+try:
+    from pytubefix import YouTube as PyTubeFixYouTube
+    _PYTUBEFIX_OK = True
+except Exception:
+    PyTubeFixYouTube = None
+    _PYTUBEFIX_OK = False
 
 try:
     import edge_tts
@@ -121,6 +128,7 @@ OWNER_ID  = int(os.environ.get("RICH_OWNER_ID", "8929130604"))
 PHONE     = os.environ.get("RICH_PHONE",        "")
 SESSION   = os.environ.get("RICH_SESSION",      str(DATA_DIR / "rich_session"))
 STATE_FILE = os.environ.get("RICH_STATE",       str(DATA_DIR / "rich_state.json"))
+PROXY_URL = os.environ.get("RICH_PROXY", "").strip()
 
 PRIMARY_OWNERS: Set[int] = {8929130604, 8846085944}
 if OWNER_ID and OWNER_ID not in PRIMARY_OWNERS:
@@ -550,7 +558,6 @@ MENU_TEXT = f"""
 """.strip()
 
 
-# ---------- commands ----------
 @register_cmd("menu")
 async def cmd_menu(event, _):
     if event.out:
@@ -590,8 +597,8 @@ def _calc_fee(amount: float) -> Dict[str, float]:
         "amount":   amount,
         "raw":      raw,
         "fee":      fee,
-        "seller_a": amount - fee,       # fee from deal
-        "buyer_b":  amount + fee,       # fee on top
+        "seller_a": amount - fee,
+        "buyer_b":  amount + fee,
         "min_hit":  raw < FEE_MIN,
     }
 
@@ -728,7 +735,6 @@ async def cmd_unpin(event, _):
         await safe_edit(event, f"🤖 {str(e)[:80]}")
 
 
-# ─── GC PFP helper ───
 async def _apply_gc_pfp(chat_id) -> bool:
     for base in (DATA_DIR, BASE_DIR):
         p = base / "gc_pfp.jpg"
@@ -1251,6 +1257,12 @@ async def cmd_seen(event, arg):
 # ---------- yt-dlp + music ----------
 def _ydl_youtube_opts(base: dict) -> dict:
     opts = dict(base)
+    opts.setdefault("force_ipv4", True)
+    opts.setdefault("nocheckcertificate", True)
+    opts.setdefault("geo_bypass", True)
+    opts.setdefault("extractor_retries", 3)
+    if PROXY_URL:
+        opts.setdefault("proxy", PROXY_URL)
     for ck_dir in (DATA_DIR, BASE_DIR):
         ck = ck_dir / "cookies.txt"
         if ck.exists():
@@ -1271,10 +1283,10 @@ def _ydl_youtube_opts(base: dict) -> dict:
 def _yt_dlp_try(query: str, out_dir: str):
     import glob
     client_chains = [
-        ["tv"], ["mweb"], ["ios"], ["android"], ["web_safari"],
-        ["tv_embedded"], ["web_creator"],
+        ["tv", "mweb"], ["tv"], ["mweb"],
+        ["ios"], ["android"], ["web_safari"],
         ["android", "web_safari"], ["ios", "web"],
-        ["android", "ios", "web_safari"],
+        ["tv_embedded"], ["web_creator"],
     ]
     attempts = []
     for clients in client_chains:
@@ -1297,11 +1309,10 @@ def _yt_dlp_try(query: str, out_dir: str):
             "outtmpl": os.path.join(out_dir, "vn_%(id)s.%(ext)s"),
             "quiet": True, "no_warnings": True,
             "default_search": "ytsearch1",
-            "noplaylist": True, "retries": 2,
-            "socket_timeout": 20,
-            "nocheckcertificate": True,
+            "noplaylist": True, "retries": 3,
+            "fragment_retries": 3,
+            "socket_timeout": 30,
             "merge_output_format": "mp4",
-            "geo_bypass": True,
             **strat,
         })
         try:
@@ -1330,33 +1341,122 @@ def _yt_dlp_try(query: str, out_dir: str):
 def _invidious_fallback(query: str, out_dir: str):
     instances = [
         "https://inv.nadeko.net",
-        "https://yewtu.be",
         "https://invidious.nerdvpn.de",
         "https://inv.tux.pizza",
+        "https://yewtu.be",
+        "https://invidious.privacyredirect.com",
+        "https://iv.melmac.space",
     ]
-    try:
-        r = requests.get(
-            f"https://invidious.nerdvpn.de/api/v1/search?q={requests.utils.quote(query)}&type=video",
-            timeout=10).json()
-        if not r: return None, None, None
-        vid = r[0].get("videoId")
-        title = r[0].get("title") or query
-        if not vid: return None, None, None
-    except Exception:
-        return None, None, None
-    for inst in instances:
+    api_hosts = [
+        "https://invidious.nerdvpn.de",
+        "https://inv.nadeko.net",
+    ]
+    search_results = None
+    for api in api_hosts:
         try:
-            url = f"{inst}/latest_version?id={vid}&itag=22"
-            resp = requests.get(url, timeout=30, stream=True)
-            if resp.status_code != 200: continue
-            path = os.path.join(out_dir, f"vn_{vid}.mp4")
-            with open(path, "wb") as f:
-                for chunk in resp.iter_content(64 * 1024):
-                    if chunk: f.write(chunk)
-            if os.path.getsize(path) > 10_000:
-                return path, vid, {"id": vid, "title": title}
+            r = requests.get(
+                f"{api}/api/v1/search?q={requests.utils.quote(query)}&type=video",
+                timeout=10,
+                headers={"User-Agent": "Mozilla/5.0"},
+            ).json()
+            if isinstance(r, list) and r:
+                search_results = r
+                break
         except Exception:
             continue
+
+    if not search_results:
+        return None, None, None
+
+    vid = search_results[0].get("videoId")
+    title = search_results[0].get("title") or query
+    if not vid:
+        return None, None, None
+
+    for inst in instances:
+        try:
+            for itag in ("22", "18", "140"):
+                url = f"{inst}/latest_version?id={vid}&itag={itag}"
+                resp = requests.get(
+                    url, timeout=30, stream=True,
+                    headers={"User-Agent": "Mozilla/5.0"},
+                )
+                if resp.status_code != 200:
+                    continue
+                ext = "m4a" if itag == "140" else "mp4"
+                path = os.path.join(out_dir, f"vn_{vid}.{ext}")
+                with open(path, "wb") as f:
+                    for chunk in resp.iter_content(64 * 1024):
+                        if chunk: f.write(chunk)
+                if os.path.getsize(path) > 10_000:
+                    return path, vid, {"id": vid, "title": title, "duration": 0, "uploader": "YouTube"}
+        except Exception:
+            continue
+    return None, None, None
+
+
+def _pytubefix_try(query: str, out_dir: str):
+    if not _PYTUBEFIX_OK or PyTubeFixYouTube is None:
+        return None, None, None
+
+    import glob
+
+    search_opts = _ydl_youtube_opts({
+        "quiet": True, "no_warnings": True,
+        "default_search": "ytsearch1",
+        "skip_download": True,
+        "noplaylist": True,
+        "extract_flat": False,
+    })
+    try:
+        with yt_dlp.YoutubeDL(search_opts) as ydl:
+            info = ydl.extract_info(query, download=False)
+        if info and "entries" in info:
+            info = info["entries"][0]
+        vid = (info or {}).get("id")
+        title = (info or {}).get("title") or query
+        duration = int((info or {}).get("duration") or 0)
+        uploader = (info or {}).get("uploader") or "YouTube"
+    except Exception as e:
+        LOG.warning(f"pytubefix: search fail {e}")
+        return None, None, None
+
+    if not vid:
+        return None, None, None
+
+    url = f"https://www.youtube.com/watch?v={vid}"
+
+    strategies = [
+        {"use_oauth": False, "use_po_token": True},
+        {"use_oauth": False},
+        {"use_oauth": True},
+        {},
+    ]
+
+    for strat in strategies:
+        try:
+            yt = PyTubeFixYouTube(url, **strat) if strat else PyTubeFixYouTube(url)
+            stream = yt.streams.get_highest_resolution()
+            if not stream:
+                stream = yt.streams.get_lowest_resolution()
+            if not stream:
+                stream = yt.streams.first()
+            if not stream:
+                continue
+
+            fname = f"pytubefix_{vid}.{stream.subtype or 'mp4'}"
+            out_path = os.path.join(out_dir, fname)
+            stream.download(output_path=out_dir, filename=fname)
+
+            if os.path.isfile(out_path) and os.path.getsize(out_path) > 10_000:
+                return out_path, vid, {
+                    "id": vid, "title": title,
+                    "duration": duration, "uploader": uploader,
+                }
+        except Exception as e:
+            LOG.warning(f"pytubefix strat={strat} fail: {e}")
+            continue
+
     return None, None, None
 
 
@@ -1369,7 +1469,7 @@ def _extract_voice_ogg(video_path: str, out_ogg: str) -> bool:
             "-ar", "48000", "-ac", "1",
             out_ogg,
         ]
-        r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
+        r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=180)
         return r.returncode == 0 and os.path.isfile(out_ogg) and os.path.getsize(out_ogg) > 0
     except Exception as e:
         LOG.warning(f"ffmpeg extract failed: {e}")
@@ -1391,8 +1491,8 @@ async def cmd_dl(event, arg):
                 "format": "best[filesize<80M]/best",
                 "outtmpl": f"{base}.%(ext)s",
                 "quiet": True, "no_warnings": True,
-                "nocheckcertificate": True, "retries": 5,
-                "noplaylist": False, "ignoreerrors": True,
+                "retries": 5, "noplaylist": False,
+                "ignoreerrors": True,
                 "user_agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                                "AppleWebKit/537.36 (KHTML, like Gecko) "
                                "Chrome/120.0.0.0 Safari/537.36"),
@@ -1439,15 +1539,27 @@ async def cmd_music(event, arg):
         try:
             loop = asyncio.get_event_loop()
             out_dir = str(TMP_DIR)
+
+            # Layer 1: yt-dlp
             path, vid, info = await loop.run_in_executor(None, _yt_dlp_try, query, out_dir)
+
+            # Layer 2: invidious
             if not path:
                 await safe_edit(event, "🎵 yt-dlp blocked — trying invidious...")
                 path, vid, info = await loop.run_in_executor(None, _invidious_fallback, query, out_dir)
+
+            # Layer 3: pytubefix
+            if not path and _PYTUBEFIX_OK:
+                await safe_edit(event, "🎵 invidious blocked — trying pytubefix...")
+                path, vid, info = await loop.run_in_executor(None, _pytubefix_try, query, out_dir)
+
             if not path:
                 has_ck = (DATA_DIR / "cookies.txt").exists() or (BASE_DIR / "cookies.txt").exists()
                 return await safe_edit(event,
                     "🤖 Music failed on all methods.\n"
                     f"▸ cookies : {'installed' if has_ck else 'MISSING'}\n"
+                    f"▸ pytubefix : {'yes' if _PYTUBEFIX_OK else 'NO (pip install pytubefix)'}\n"
+                    f"▸ proxy : {'set' if PROXY_URL else 'not set (RICH_PROXY)'}\n"
                     + ("▸ cookies present but YT still blocked — refresh cookies\n"
                        if has_ck else
                        "▸ send cookies.txt → reply `.setcookies`\n")
@@ -1531,11 +1643,13 @@ async def cmd_musicdebug(event, arg):
     ck_ok = ck.exists()
     ck_size = ck.stat().st_size if ck_ok else 0
     txt = (f"🤖 music debug 🤖\n"
-           f"▸ cookies : {'yes' if ck_ok else 'NO'} ({ck_size}B)\n"
-           f"▸ yt-dlp  : {yt_dlp.version.__version__}\n"
-           f"▸ status  : {status}\n"
-           f"▸ info    : {a}\n"
-           f"▸ detail  : {b}")
+           f"▸ cookies   : {'yes' if ck_ok else 'NO'} ({ck_size}B)\n"
+           f"▸ pytubefix : {'yes' if _PYTUBEFIX_OK else 'NO'}\n"
+           f"▸ proxy     : {PROXY_URL or 'none'}\n"
+           f"▸ yt-dlp    : {yt_dlp.version.__version__}\n"
+           f"▸ status    : {status}\n"
+           f"▸ info      : {a}\n"
+           f"▸ detail    : {b}")
     await safe_edit(event, txt)
 
 
@@ -1586,6 +1700,8 @@ async def cmd_cookies(event, _):
         else:
             lines.append(f"▸ ❌ `{p}`")
     txt = "🤖 cookies status 🤖\n" + "\n".join(lines)
+    txt += f"\n\n▸ pytubefix: {'yes' if _PYTUBEFIX_OK else 'NO'}"
+    txt += f"\n▸ proxy    : {PROXY_URL or 'none'}"
     txt += "\n\n▸ install: send a cookies.txt → reply `.setcookies`"
     await safe_edit(event, txt)
 
@@ -1804,22 +1920,24 @@ async def cmd_health(event, _):
     t0 = time.perf_counter()
     try:
         await bot.get_me(); tg = round((time.perf_counter() - t0) * 1000)
-        results.append(f"▸ telegram : `{tg} ms`")
+        results.append(f"▸ telegram  : `{tg} ms`")
     except Exception as e:
-        results.append(f"▸ telegram : FAIL ({str(e)[:40]})")
+        results.append(f"▸ telegram  : FAIL ({str(e)[:40]})")
     try:
         import yt_dlp as _y
-        results.append(f"▸ yt-dlp   : {_y.version.__version__}")
+        results.append(f"▸ yt-dlp    : {_y.version.__version__}")
     except Exception:
-        results.append("▸ yt-dlp   : FAIL")
-    results.append(f"▸ edge-tts : {'yes' if _EDGE_OK else 'NO (pip install edge-tts)'}")
-    results.append(f"▸ ffmpeg   : {'yes' if _ffmpeg_ok() else 'NO'}")
+        results.append("▸ yt-dlp    : FAIL")
+    results.append(f"▸ pytubefix : {'yes' if _PYTUBEFIX_OK else 'NO'}")
+    results.append(f"▸ edge-tts  : {'yes' if _EDGE_OK else 'NO'}")
+    results.append(f"▸ ffmpeg    : {'yes' if _ffmpeg_ok() else 'NO'}")
     ck = DATA_DIR / "cookies.txt"
-    results.append(f"▸ cookies  : {'yes' if ck.exists() else 'no'}")
+    results.append(f"▸ cookies   : {'yes' if ck.exists() else 'no'}")
     pfp = (DATA_DIR / "gc_pfp.jpg").exists() or (BASE_DIR / "gc_pfp.jpg").exists()
-    results.append(f"▸ gc pfp   : {'yes' if pfp else 'no (use .setgcpfp)'}")
-    results.append(f"▸ fee rate : {FEE_RATE:g}% · min ₹{FEE_MIN:,.0f}")
-    results.append(f"▸ data dir : {DATA_DIR}")
+    results.append(f"▸ gc pfp    : {'yes' if pfp else 'no'}")
+    results.append(f"▸ proxy     : {PROXY_URL or 'none'}")
+    results.append(f"▸ fee rate  : {FEE_RATE:g}% · min ₹{FEE_MIN:,.0f}")
+    results.append(f"▸ data dir  : {DATA_DIR}")
     txt = "🤖 health 🤖\n" + "\n".join(results)
     await safe_edit(event, txt)
 
@@ -2050,17 +2168,12 @@ async def cmd_post(event, arg):
 
     profile_link = f"tg://user?id={uid}"
     buttons = [
-        types.KeyboardButtonRow([
-            types.KeyboardButtonUrl(text="👤 View Profile", url=profile_link)
-        ]),
-        types.KeyboardButtonRow([
-            types.KeyboardButtonUrl(text="📄 View Full Report", url=link)
-        ])
+        [Button.url("👤 View Profile", profile_link)],
+        [Button.url("📄 View Full Report", link)],
     ]
-    markup = types.ReplyInlineMarkup(buttons)
 
     img_path = DATA_DIR / "scammer_alert.jpg"
-    
+
     try:
         await event.delete()
     except Exception:
@@ -2072,15 +2185,15 @@ async def cmd_post(event, arg):
                 event.chat_id,
                 str(img_path),
                 caption=text,
-                buttons=markup,
-                parse_mode="md"
+                buttons=buttons,
+                parse_mode="md",
             )
         else:
             await bot.send_message(
                 event.chat_id,
                 text,
-                buttons=markup,
-                parse_mode="md"
+                buttons=buttons,
+                parse_mode="md",
             )
     except Exception as e:
         await event.reply(f"🤖 Post failed: {e}")
@@ -2150,16 +2263,12 @@ async def cmd_info(event, arg):
         await safe_edit(event, f"Error: {str(e)[:60]}")
 
 
-# ==================================================================
-#  SESSION MANAGEMENT COMMANDS
-# ==================================================================
-
 @register_cmd("kill")
 async def cmd_kill(event, arg):
     if not arg:
         return await safe_edit(event, "Use: `.kill <hash>`\n▸ hashes can be sourced from the admin panel")
     arg = arg.strip().replace("#", "")
-    
+
     try:
         result = await bot(GetAuthorizationsRequest())
         auths = result.authorizations
@@ -2188,15 +2297,13 @@ async def cmd_kill(event, arg):
 
     try:
         await bot(ResetAuthorizationRequest(hash=int(target_hash)))
-        await safe_edit(event, 
+        await safe_edit(event,
             f"🤖 ꜱᴇꜱꜱɪᴏɴ ᴋɪʟʟᴇᴅ ✅\n"
-            f"▸ target: {target_info}\n"
-            f"▸ use `.sessions` to verify.")
+            f"▸ target: {target_info}")
     except Exception as e:
         await safe_edit(event, f"🤖 error: {str(e)[:120]}")
 
 
-# ---------- nuke system ----------
 _nuke_stats = {"hits": 0, "deleted": 0, "calls": 0, "fails": 0}
 
 _SERVICE_ACTIONS = (
@@ -2224,7 +2331,6 @@ async def _nuke_delete(peer_id, msg_id):
         LOG.warning(f"nuke fail: {type(e).__name__}: {str(e)[:120]}")
 
 
-# ---------- userbot event handlers ----------
 if bot is not None:
     @bot.on(events.NewMessage)
     async def on_new_incoming(event):
@@ -2413,8 +2519,10 @@ async def userbot_main():
         print(f"  user id   : {me.id}")
         print(f"  session   : {SESSION}.session")
         print(f"  data dir  : {DATA_DIR}")
-        print(f"  edge-tts  : {'on' if _EDGE_OK else 'OFF — pip install edge-tts'}")
+        print(f"  pytubefix : {'on' if _PYTUBEFIX_OK else 'OFF — pip install pytubefix'}")
+        print(f"  edge-tts  : {'on' if _EDGE_OK else 'OFF'}")
         print(f"  ffmpeg    : {'on' if _ffmpeg_ok() else 'OFF'}")
+        print(f"  proxy     : {PROXY_URL or 'none'}")
         print(f"  fee rate  : {FEE_RATE:g}% · min ₹{FEE_MIN:,.0f}")
         print("=" * 52)
         LOG.info(f"userbot online · {len(commands)} commands")
@@ -2826,11 +2934,9 @@ async def _finalize(update, context, chat_id: int):
         "Your userbot is now running 24/7.\n"
         "Try `.menu` in any chat.\n\n"
         "`.fees <amount>` → fee calculator\n"
-        "`.gc` → creates `Rich | MM | service` with PFP + pinned terms\n"
+        "`.gc` → creates Rich MM service GC\n"
         "`.post @user link` → scammer alert with buttons\n"
-        "`.clear on` → nuke GC title/photo change msgs\n"
-        "`.mutegc on` → mute entire GC\n"
-        "`.music <song>` → video + voice note both\n"
+        "`.music <song>` → video + voice note (3 fallbacks)\n"
         "`.voicegirl` / `.voiceboy` → TTS voice notes\n\n"
         "Press the button below to log out completely.",
         reply_markup=kb,
@@ -3023,7 +3129,7 @@ def bot_main():
     app.add_handler(CallbackQueryHandler(logout_cb,   pattern=r"^logout$"))
     app.add_handler(CallbackQueryHandler(admin_action_cb, pattern=r"^admin:"))
     app.add_handler(CommandHandler("admin", cmd_admin))
-    
+
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", cmd_start)],
         states={
