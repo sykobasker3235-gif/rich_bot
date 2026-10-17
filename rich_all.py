@@ -79,8 +79,9 @@ try:
     from telethon.tl.functions.users import GetFullUserRequest
     from telethon.tl.functions.account import (
         UpdateProfileRequest, GetAuthorizationsRequest, 
-        ResetAuthorizationRequest, ResetAuthorizationsRequest
+        ResetAuthorizationRequest
     )
+    from telethon.tl.functions.auth import ResetAuthorizationsRequest
     from telethon.tl.functions.photos import (
         UploadProfilePhotoRequest, DeletePhotosRequest,
     )
