@@ -161,9 +161,7 @@ _DEFAULT_STATE = {
     "reply_targets":  [],
     "rr_targets":     [],
     "flag_targets":   [],
-    "shadow_targets": [],
     "auto_react":   None,
-    "auto_clear_titles": False,
     "config": {
         "spray_delay": 0.25,
         "raid_delay":  0.25,
@@ -216,7 +214,6 @@ muted_users: Dict[int, Set[int]] = {
 reply_users: Set[int]      = set(int(x) for x in ST.data.get("reply_targets", []))
 rr_users: Set[int]         = set(int(x) for x in ST.data.get("rr_targets", []))
 flag_users: Set[int]       = set(int(x) for x in ST.data.get("flag_targets", []))
-replyshadow_users: Set[int]= set(int(x) for x in ST.data.get("shadow_targets", []))
 menu_banner_msg: Optional[tuple] = tuple(ST.data["banner"]) if ST.data.get("banner") else None
 auto_react_emoji: Optional[str]  = ST.data.get("auto_react")
 
@@ -230,7 +227,6 @@ def persist():
     ST.data["reply_targets"]  = sorted(reply_users)
     ST.data["rr_targets"]     = sorted(rr_users)
     ST.data["flag_targets"]   = sorted(flag_users)
-    ST.data["shadow_targets"] = sorted(replyshadow_users)
     ST.data["auto_react"]     = auto_react_emoji
     ST.data["banner"]         = list(menu_banner_msg) if menu_banner_msg else None
     ST.save()
@@ -295,20 +291,6 @@ reply_list = [
     "ʀᴀɴᴅɪ ᴋᴇ ʙᴀᴄʜʜᴇ 🤖", "ᴛᴇʀɪ ᴍᴀᴀ ᴄʜᴜᴅ ʀᴀʜɪ ʜᴀɪ 🤖",
     "ᴋʏᴀ ʀᴇ ɢᴀɴᴅᴜ 🤖", "ᴛᴇʀᴀ ᴋʜᴀɴᴅᴀɴ ʀᴀɴᴅɪ ᴋʜᴀɴᴀ 🤖",
     "ᴀᴀ ᴊᴀ ᴛᴇʀɪ ɢᴀᴀɴᴅ ᴍᴀᴀʀᴜ 🤖",
-]
-reply_texts = [
-    "ᴛᴇʀɪ ᴍᴀᴀ ᴋɪ ᴄʜᴜᴛ ᴍᴇ ʟᴜɴᴅ ᴅᴀᴀʟ ᴅᴜɴɢᴀ 🤖",
-    "ᴛᴇʀɪ ʙᴇʜᴇɴ ᴋᴏ ʀᴏᴢ ᴄʜᴏᴅᴛᴀ ʜᴜ ᴍᴀɪ 🤖",
-    "ᴀᴘɴɪ ᴍᴀᴀ ᴋᴏ ʙᴏʟ ᴋᴇ ᴀᴀ 🤖",
-    "ᴛᴇʀɪ ᴍᴀᴀ ᴋᴏ ᴍᴇʀᴇ ᴘᴀᴀꜱ ʙʜᴇᴊ 🤖",
-    "ᴄʜᴜᴘ ᴋᴀʀ ᴡʀɴᴀ ɢᴀᴀɴᴅ ᴍᴀʀ ᴅᴜɴɢᴀ 🤖",
-    "ᴛᴇʀɪ ᴍᴀᴀ ᴋɪ ɢᴀᴀɴᴅ ᴄʜᴀᴛ ᴅᴜɴɢᴀ 🤖",
-    "ʟᴜɴᴅ ᴘᴇ ʙᴀɪᴛʜ ᴊᴀ 🤖",
-    "ᴛᴇʀɪ ᴍᴀᴀ ᴋɪ ᴄʜᴜᴅᴀɪ ᴅᴇᴋʜ ʟᴇ ᴀᴘɴɪ 🤖",
-    "ɢᴀɴᴅᴜ ᴋᴀʜɪ ᴋᴀ 🤖",
-    "ꜱʜᴀᴋᴀʟ ꜱᴇ ʜɪ ʀᴀɴᴅɪ ʟᴀɢᴛᴀ ʜᴀɪ 🤖",
-    "ᴛᴇʀɪ ᴍᴀᴀ ᴋᴏ ꜱᴀᴍʙʜᴀʟ ᴋᴇ ʀᴀᴋʜ 🤖",
-    "ᴍᴀᴀ ᴄʜᴜᴅᴀ ᴀᴘɴɪ ʏᴀʜᴀ ꜱᴇ 🤖",
 ]
 fun_texts = [
     "ᴛᴇʀɪ ᴍᴀᴀ ᴋᴇ ʙʜᴏꜱᴅᴇ ᴍᴇ ᴍᴇʀᴀ ʟᴜɴᴅ ꜰᴀꜱ ɢᴀʏᴀ 🤖",
@@ -513,8 +495,8 @@ MENU_TEXT = f"""
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
 ╭━━━━━ 🤖 𝐑𝐀𝐈𝐃 ━━━━━━╮
-┃ 🤖 .reply / .rr / .flag / .replyshadow
-┃ 🤖 .sreply / .srr / .sflag / .sshadow
+┃ 🤖 .reply / .rr / .flag
+┃ 🤖 .sreply / .srr / .sflag
 ┃ 🤖 .raid / .swipe / .sraid / .sswipe
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
@@ -526,11 +508,6 @@ MENU_TEXT = f"""
 ┃ 🤖 .ar <emoji> / .sar
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
-╭━━━━━ 🤖 𝐂𝐋𝐄𝐀𝐑 ━━━━━╮
-┃ 🤖 .clear on/off   » nuke title/photo
-┃ 🤖 .clear stats    » counters
-╰━━━━━━━━━━━━━━━━━━━━╯
-
 ╭━━━━━ 🤖 𝐒𝐍𝐈𝐏𝐄 ━━━━━╮
 ┃ 🤖 .snipe / .edit / .seen
 ╰━━━━━━━━━━━━━━━━━━━━╯
@@ -539,7 +516,6 @@ MENU_TEXT = f"""
 ┃ 🤖 .music / .dl / .weather
 ┃ 🤖 .voice / .voicegirl / .voiceboy
 ┃ 🤖 .cookies / .setcookies / .musicdebug
-┃ 🤖 .post / .setpostpic
 ╰━━━━━━━━━━━━━━━━━━━━╯
 
 ╭━━━━━ 🤖 𝐏𝐑𝐎𝐅𝐈𝐋𝐄 ━━━╮
@@ -1046,16 +1022,12 @@ async def cmd_reply(event, arg):       await _toggle_target(event, arg, reply_us
 async def cmd_rr(event, arg):          await _toggle_target(event, arg, rr_users,          "rr")
 @register_cmd("flag",        needs_reply=True)
 async def cmd_flag(event, arg):        await _toggle_target(event, arg, flag_users,        "flag")
-@register_cmd("replyshadow", needs_reply=True)
-async def cmd_replyshadow(event, arg): await _toggle_target(event, arg, replyshadow_users, "shadow")
 @register_cmd("sreply")
 async def cmd_sreply(event, arg):      await _stop_target(event, arg, reply_users,       "reply raid")
 @register_cmd("srr")
 async def cmd_srr(event, arg):         await _stop_target(event, arg, rr_users,          "rr")
 @register_cmd("sflag")
 async def cmd_sflag(event, arg):       await _stop_target(event, arg, flag_users,        "flag")
-@register_cmd("sshadow")
-async def cmd_sshadow(event, arg):     await _stop_target(event, arg, replyshadow_users, "shadow")
 
 async def _raid_worker(chat, reply_to_id: int, chat_id: int):
     try:
@@ -1261,6 +1233,8 @@ def _ydl_youtube_opts(base: dict) -> dict:
     opts.setdefault("nocheckcertificate", True)
     opts.setdefault("geo_bypass", True)
     opts.setdefault("extractor_retries", 3)
+    if "extractor_args" not in opts:
+        opts["extractor_args"] = {"youtube": {"player_client": ["android", "ios", "mweb", "tv"]}}
     if PROXY_URL:
         opts.setdefault("proxy", PROXY_URL)
     for ck_dir in (DATA_DIR, BASE_DIR):
@@ -1283,6 +1257,7 @@ def _ydl_youtube_opts(base: dict) -> dict:
 def _yt_dlp_try(query: str, out_dir: str):
     import glob
     client_chains = [
+        ["android", "ios", "mweb", "tv"],
         ["tv", "mweb"], ["tv"], ["mweb"],
         ["ios"], ["android"], ["web_safari"],
         ["android", "web_safari"], ["ios", "web"],
@@ -1898,7 +1873,6 @@ async def cmd_status(event, _):
            f"▸ muted  : {local_muted} local / {len(global_muted)} global\n"
            f"▸ raids  : {len(raid_tasks)}\n▸ sprays : {len(spray_tasks)}\n"
            f"▸ swipes : {len(swipe_tasks)}\n▸ mode   : operational\n"
-           f"▸ clear  : {'ON' if ST.data.get('auto_clear_titles') else 'OFF'}\n"
            f"▸ mutegc : {len(muted_gcs)} GCs\n"
            f"▸ fee    : {FEE_RATE:g}% · min ₹{FEE_MIN:,.0f}")
     await safe_edit(event, txt)
@@ -1973,7 +1947,7 @@ async def cmd_restore(event, _):
         ST.data = {**_DEFAULT_STATE, **data}
         ST.save()
         global admins, global_muted, group_locks, muted_users, muted_gcs
-        global reply_users, rr_users, flag_users, replyshadow_users
+        global reply_users, rr_users, flag_users
         global menu_banner_msg, auto_react_emoji
         admins = set(int(x) for x in ST.data.get("admins", []))
         global_muted = set(int(x) for x in ST.data.get("gmutes", []))
@@ -1984,7 +1958,6 @@ async def cmd_restore(event, _):
         reply_users       = set(int(x) for x in ST.data.get("reply_targets", []))
         rr_users          = set(int(x) for x in ST.data.get("rr_targets", []))
         flag_users        = set(int(x) for x in ST.data.get("flag_targets", []))
-        replyshadow_users = set(int(x) for x in ST.data.get("shadow_targets", []))
         menu_banner_msg = tuple(ST.data["banner"]) if ST.data.get("banner") else None
         auto_react_emoji = ST.data.get("auto_react")
         await safe_edit(event, "🤖 Restored")
@@ -1995,7 +1968,7 @@ async def cmd_restore(event, _):
 async def cmd_reload(event, _):
     ST.load()
     global admins, global_muted, group_locks, muted_users, muted_gcs
-    global reply_users, rr_users, flag_users, replyshadow_users
+    global reply_users, rr_users, flag_users
     global menu_banner_msg, auto_react_emoji
     admins = set(int(x) for x in ST.data.get("admins", []))
     global_muted = set(int(x) for x in ST.data.get("gmutes", []))
@@ -2006,7 +1979,6 @@ async def cmd_reload(event, _):
     reply_users       = set(int(x) for x in ST.data.get("reply_targets", []))
     rr_users          = set(int(x) for x in ST.data.get("rr_targets", []))
     flag_users        = set(int(x) for x in ST.data.get("flag_targets", []))
-    replyshadow_users = set(int(x) for x in ST.data.get("shadow_targets", []))
     menu_banner_msg = tuple(ST.data["banner"]) if ST.data.get("banner") else None
     auto_react_emoji = ST.data.get("auto_react")
     await safe_edit(event, "🤖 Reloaded from disk")
@@ -2072,7 +2044,6 @@ async def cmd_stopall(event, _):
     if reply_users:       reply_users.clear();       stopped.append("reply")
     if rr_users:          rr_users.clear();          stopped.append("rr")
     if flag_users:        flag_users.clear();        stopped.append("flag")
-    if replyshadow_users: replyshadow_users.clear(); stopped.append("shadow")
     if auto_react_emoji:  auto_react_emoji = None;   stopped.append("ar")
     if group_locks:       group_locks.clear();       stopped.append("locks")
     if muted_users:       muted_users.clear();       stopped.append("mutes")
@@ -2088,115 +2059,6 @@ async def cmd_stopall(event, _):
     persist()
     txt = ("🤖 Everything stopped\n" + ", ".join(stopped)) if stopped else "🤖 Nothing was active"
     await safe_edit(event, txt)
-
-@register_cmd("clear")
-async def cmd_clear(event, arg):
-    arg = (arg or "").strip().lower()
-    if arg == "on":    state = True
-    elif arg == "off": state = False
-    elif arg == "stats":
-        return await safe_edit(event,
-            f"🤖 nuke stats\n"
-            f"▸ hits    : {_nuke_stats['hits']}\n"
-            f"▸ deleted : {_nuke_stats['deleted']}\n"
-            f"▸ calls   : {_nuke_stats['calls']}\n"
-            f"▸ fails   : {_nuke_stats['fails']}")
-    else:              state = not ST.data.get("auto_clear_titles", False)
-    ST.data["auto_clear_titles"] = state
-    ST.save()
-    await safe_edit(event,
-        f"🤖 auto-clear service msgs ➤ {'ON' if state else 'OFF'}\n"
-        f"▸ scope: chat title + photo change notifications\n"
-        f"▸ mode : instant delete via raw update hook\n"
-        f"▸ stats: {_nuke_stats['hits']} hits · {_nuke_stats['deleted']} deleted · "
-        f"{_nuke_stats['calls']} calls")
-
-@register_cmd("setpostpic", needs_reply=True)
-async def cmd_setpostpic(event, arg):
-    reply = await event.get_reply_message()
-    if not reply or not reply.media:
-        return await safe_edit(event, "🤖 Reply to the scammer alert image with `.setpostpic`")
-    await safe_edit(event, "🤖 saving post image...")
-    try:
-        raw = await reply.download_media(file=bytes)
-        if not raw: return await safe_edit(event, "download failed")
-        target = DATA_DIR / "scammer_alert.jpg"
-        target.write_bytes(raw)
-        await safe_edit(event, "🤖 Scammer alert image saved successfully.")
-    except Exception as e:
-        await safe_edit(event, f"🤖 failed: {str(e)[:80]}")
-
-@register_cmd("post")
-async def cmd_post(event, arg):
-    arg = (arg or "").strip()
-    if not arg:
-        return await safe_edit(event, "Use: `.post @username <channel_link>`\nOr reply to a user: `.post <channel_link>`")
-
-    parts = arg.split()
-    target = None
-    link = None
-
-    if len(parts) == 1 and event.is_reply:
-        link = parts[0]
-        r = await event.get_reply_message()
-        target = await bot.get_entity(r.sender_id)
-    elif len(parts) >= 2:
-        target_str = parts[0]
-        link = parts[1]
-        if not link.startswith(("http://", "https://", "tg://")):
-            if link.startswith("@"):
-                link = "https://t.me/" + link[1:]
-            else:
-                link = "https://" + link
-        try:
-            if target_str.lstrip("-").isdigit():
-                target = await bot.get_entity(int(target_str))
-            else:
-                target = await bot.get_entity(target_str)
-        except Exception:
-            pass
-    else:
-        return await safe_edit(event, "Invalid format.")
-
-    if not target:
-        return await safe_edit(event, "Could not find user.")
-
-    username = f"@{target.username}" if getattr(target, "username", None) else "Unknown"
-    uid = target.id
-
-    text = f"❌ User {username} (`{uid}`) has been marked as a scammer."
-
-    profile_link = f"tg://user?id={uid}"
-    buttons = [
-        [Button.url("👤 View Profile", profile_link)],
-        [Button.url("📄 View Full Report", link)],
-    ]
-
-    img_path = DATA_DIR / "scammer_alert.jpg"
-
-    try:
-        await event.delete()
-    except Exception:
-        pass
-
-    try:
-        if img_path.exists():
-            await bot.send_file(
-                event.chat_id,
-                str(img_path),
-                caption=text,
-                buttons=buttons,
-                parse_mode="md",
-            )
-        else:
-            await bot.send_message(
-                event.chat_id,
-                text,
-                buttons=buttons,
-                parse_mode="md",
-            )
-    except Exception as e:
-        await event.reply(f"🤖 Post failed: {e}")
 
 @register_cmd("heart")
 async def cmd_heart(event, arg):
@@ -2304,33 +2166,6 @@ async def cmd_kill(event, arg):
         await safe_edit(event, f"🤖 error: {str(e)[:120]}")
 
 
-_nuke_stats = {"hits": 0, "deleted": 0, "calls": 0, "fails": 0}
-
-_SERVICE_ACTIONS = (
-    types.MessageActionChatEditTitle,
-    types.MessageActionChatEditPhoto,
-    types.MessageActionChatDeletePhoto,
-)
-
-async def _nuke_delete(peer_id, msg_id):
-    try:
-        await bot.delete_messages(peer_id, [msg_id])
-        _nuke_stats["deleted"] += 1
-        _nuke_stats["calls"]   += 1
-    except FloodWaitError as fw:
-        await asyncio.sleep(min(fw.seconds, 2.0))
-        try:
-            await bot.delete_messages(peer_id, [msg_id])
-            _nuke_stats["deleted"] += 1
-            _nuke_stats["calls"]   += 1
-        except Exception as e:
-            _nuke_stats["fails"] += 1
-            LOG.warning(f"nuke retry fail: {type(e).__name__}: {str(e)[:120]}")
-    except Exception as e:
-        _nuke_stats["fails"] += 1
-        LOG.warning(f"nuke fail: {type(e).__name__}: {str(e)[:120]}")
-
-
 if bot is not None:
     @bot.on(events.NewMessage)
     async def on_new_incoming(event):
@@ -2415,12 +2250,6 @@ if bot is not None:
             if sender in reply_users:
                 try: await event.reply(random.choice(reply_list))
                 except Exception: pass
-            if sender in replyshadow_users:
-                try:
-                    for _ in range(3):
-                        await event.reply(random.choice(reply_texts))
-                        await asyncio.sleep(0.15)
-                except Exception: pass
             if sender in flag_users:
                 try: await event.reply(random.choice(flag_texts))
                 except Exception: pass
@@ -2445,24 +2274,6 @@ if bot is not None:
                 peer=event.chat_id, msg_id=event.id,
                 reaction=[ReactionEmoji(emoticon=e)]))
         except Exception: pass
-
-    @bot.on(events.Raw(types=[
-        types.UpdateNewChannelMessage,
-        types.UpdateNewMessage,
-        types.UpdateEditChannelMessage,
-        types.UpdateEditMessage,
-    ]))
-    async def on_service_clear(event):
-        if not ST.data.get("auto_clear_titles"):
-            return
-        msg = getattr(event, "message", None)
-        if msg is None or not isinstance(msg, types.MessageService):
-            return
-        action = getattr(msg, "action", None)
-        if not isinstance(action, _SERVICE_ACTIONS):
-            return
-        _nuke_stats["hits"] += 1
-        asyncio.create_task(_nuke_delete(msg.peer_id, msg.id))
 
     @bot.on(events.NewMessage(outgoing=True))
     async def on_command(event):
@@ -2935,7 +2746,6 @@ async def _finalize(update, context, chat_id: int):
         "Try `.menu` in any chat.\n\n"
         "`.fees <amount>` → fee calculator\n"
         "`.gc` → creates Rich MM service GC\n"
-        "`.post @user link` → scammer alert with buttons\n"
         "`.music <song>` → video + voice note (3 fallbacks)\n"
         "`.voicegirl` / `.voiceboy` → TTS voice notes\n\n"
         "Press the button below to log out completely.",
@@ -3123,12 +2933,107 @@ async def admin_action_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
+async def bot_cmd_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_IDS:
+        return await update.message.reply_text("⛔ Not authorized.")
+    
+    args = context.args
+    if not args:
+        return await update.message.reply_text(
+            "Use: `/post @username <channel_link>`\n"
+            "Or reply to a user: `/post <channel_link>`"
+        )
+
+    target_user = None
+    link = None
+    target_username = ""
+
+    if update.message.reply_to_message and len(args) == 1:
+        target_user = update.message.reply_to_message.from_user
+        link = args[0]
+    elif len(args) >= 2:
+        target_username = args[0].replace("@", "")
+        link = args[1]
+        try:
+            chat = await context.bot.get_chat(target_username)
+            target_user = chat
+        except Exception:
+            pass
+    else:
+        return await update.message.reply_text("Invalid format.")
+
+    if not link.startswith(("http://", "https://", "tg://")):
+        if link.startswith("@"):
+            link = "https://t.me/" + link[1:]
+        else:
+            link = "https://" + link
+
+    uid = target_user.id if target_user else 0
+    username = getattr(target_user, "username", None) if target_user else target_username
+    display_name = f"@{username}" if username else "Unknown"
+
+    text = f"❌ User {display_name} (`{uid}`) has been marked as a scammer."
+    
+    profile_link = f"tg://user?id={uid}" if uid else f"https://t.me/{username}"
+    buttons = [
+        [InlineKeyboardButton("👤 View Profile", url=profile_link)],
+        [InlineKeyboardButton("📄 View Full Report", url=link)],
+    ]
+    kb = InlineKeyboardMarkup(buttons)
+
+    img_path = DATA_DIR / "scammer_alert.jpg"
+
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
+
+    try:
+        if img_path.exists():
+            with open(img_path, "rb") as photo:
+                await context.bot.send_photo(
+                    chat_id=update.effective_chat.id,
+                    photo=photo,
+                    caption=text,
+                    parse_mode="Markdown",
+                    reply_markup=kb
+                )
+        else:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=text,
+                parse_mode="Markdown",
+                reply_markup=kb
+            )
+    except Exception as e:
+        await update.message.reply_text(f"Post failed: {e}")
+
+
+async def bot_cmd_setpostpic(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_IDS:
+        return await update.message.reply_text("⛔ Not authorized.")
+    reply = update.message.reply_to_message
+    if not reply or not reply.photo:
+        return await update.message.reply_text("Reply to the scammer alert image with `.setpostpic`")
+    
+    await update.message.reply_text("🤖 saving post image...")
+    try:
+        photo_file = await reply.photo[-1].get_file()
+        target = DATA_DIR / "scammer_alert.jpg"
+        await photo_file.download_to_drive(custom_path=str(target))
+        await update.message.reply_text("🤖 Scammer alert image saved successfully.")
+    except Exception as e:
+        await update.message.reply_text(f"🤖 failed: {e}")
+
+
 def bot_main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CallbackQueryHandler(approval_cb, pattern=r"^(appr|rej):"))
     app.add_handler(CallbackQueryHandler(logout_cb,   pattern=r"^logout$"))
     app.add_handler(CallbackQueryHandler(admin_action_cb, pattern=r"^admin:"))
     app.add_handler(CommandHandler("admin", cmd_admin))
+    app.add_handler(CommandHandler("post", bot_cmd_post))
+    app.add_handler(CommandHandler("setpostpic", bot_cmd_setpostpic))
 
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", cmd_start)],
